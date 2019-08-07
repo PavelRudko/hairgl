@@ -1,0 +1,123 @@
+#define MAX_STRAND_VERTICES 16
+
+precision highp float;
+
+layout(local_size_x = 1, local_size_y = MAX_STRAND_VERTICES, local_size_z = 1) in;
+
+layout(std430, binding = REST_POSITIONS_BUFFER_BINDING) buffer RestPositions
+{
+    vec4 data[];
+} restPositions;
+
+layout(std430, binding = POSITIONS_BUFFER_BINDING) buffer Positions
+{
+    vec4 data[];
+} positions;
+
+layout(std430, binding = PREVIOUS_POSITIONS_BUFFER_BINDING) buffer PreviousPositions
+{
+    vec4 data[];
+} previousPositions;
+
+layout(std430, binding = TANGENTS_DISTANCES_BINDING) buffer TangentsDistances
+{
+    vec4 data[];
+} tangentsDistances;
+
+uniform mat4 modelMatrix;
+uniform int verticesPerStrand;
+uniform float timeStep;
+uniform float globalStiffness;
+uniform float damping;
+uniform vec3 gravity;
+uniform int lengthConstraintIterations;
+
+shared vec4 sharedPositions[MAX_STRAND_VERTICES];
+
+bool isMovable(vec4 position)
+{
+    return position.w > 0;
+}
+
+vec2 constraintMultiplier(vec4 p0, vec4 p1)
+{
+    if(isMovable(p0)) {
+	    return isMovable(p1) ? vec2(0.5, 0.5) : vec2(1.0, 0.0);
+	}
+	else {
+	    return isMovable(p1) ? vec2(0.0, 1.0) : vec2(0.0, 0.0);
+	}
+}
+
+void updateFinalPositions(vec4 oldPosition, vec4 newPosition, int globalVertexIndex)
+{
+    positions.data[globalVertexIndex] = newPosition;
+	previousPositions.data[globalVertexIndex] = oldPosition;
+}
+
+vec4 integrate(vec4 currentPosition, vec4 oldPosition, vec3 force, float dampingCoeff)
+{
+    vec4 outputPos = currentPosition;
+	outputPos.xyz = currentPosition.xyz + (1.0 - dampingCoeff) * (currentPosition.xyz - oldPosition.xyz) + force * timeStep * timeStep;
+	return outputPos;
+}
+
+void applyDistanceConstraint(int index0, int index1, float targetDistance)
+{
+    vec4 p0 = sharedPositions[index0];
+	vec4 p1 = sharedPositions[index1];
+
+	vec3 delta = p1.xyz - p0.xyz;
+	float distance = max(length(delta), 1e-7);
+	float stretching = 1 - targetDistance / distance;
+	delta = delta * stretching;
+	vec2 multiplier = constraintMultiplier(p0, p1);
+
+	sharedPositions[index0].xyz += multiplier[0] * delta;
+	sharedPositions[index1].xyz -= multiplier[1] * delta;
+}
+
+void main()
+{
+    int globalID = int(gl_GlobalInvocationID.x);
+	int localID = int(gl_LocalInvocationID.y);
+
+	if(localID >= verticesPerStrand) {
+	    return;
+	}
+
+	int globalRootVertexIndex = globalID * (verticesPerStrand);
+	int globalVertexIndex = globalRootVertexIndex + localID;
+
+	vec4 currentPosition = positions.data[globalVertexIndex];
+	vec4 previousPosition = previousPositions.data[globalVertexIndex];
+	vec4 initialPosition = restPositions.data[globalVertexIndex];
+	vec4 tangentDistance = tangentsDistances.data[globalVertexIndex];
+	vec3 force = gravity;
+
+	//Apply forces using Verlet integration
+	sharedPositions[localID] = isMovable(currentPosition) ? integrate(currentPosition, previousPosition, force, damping) : initialPosition;
+
+	//Global stiffness
+	vec3 delta = globalStiffness * (initialPosition - sharedPositions[localID]).xyz;
+	sharedPositions[localID].xyz += delta;
+	barrier();
+
+	//Length constraints
+	for(int i = 0; i < lengthConstraintIterations; i++) {
+
+	    if(localID % 2 == 0 && localID < verticesPerStrand - 1) {
+		    applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+		}
+
+		barrier();
+
+		if(localID % 2 == 1 && localID < verticesPerStrand - 1) {
+		    applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+		}
+
+		barrier();
+	}
+
+	updateFinalPositions(currentPosition, sharedPositions[localID], globalVertexIndex);
+}
