@@ -27,7 +27,7 @@ Application::Application(const char* windowTitle, int initialScreenWidth, int in
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
 
-    hairAsset = hairSystem->LoadAsset("hair.hgl");
+    hairAsset = hairSystem->LoadAsset("data/hair.hgl");
     hairInstance = hairSystem->CreateInstance(hairAsset);
 
     hairSettings.visualizeGuides = true;

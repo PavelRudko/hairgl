@@ -27,3 +27,12 @@ target_include_directories(sample PUBLIC ${OPENGL_INCLUDE_DIR} ${IMGUI_DIR})
 target_link_libraries(sample PUBLIC glfw hairgl ${OPENGL_LIBRARIES})
 
 set_target_properties(sample PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
+
+add_custom_target(
+	sample_data
+	COMMAND ${CMAKE_COMMAND}
+	-E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/data" "${OUTPUT_DIRECTORY}/data"
+	COMMENT "Copying sample data to output directory" VERBATIM
+)
+
+add_dependencies(sample sample_data)
