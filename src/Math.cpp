@@ -168,6 +168,20 @@ namespace HairGL
         return *this;
     }
 
+	Vector3 Vector3::Cross(const Vector3& a, const Vector3& b)
+	{
+		Vector3 c;
+		c.x = a.y * b.z - a.z * b.y;
+		c.y = a.z * b.x - a.x * b.z;
+		c.z = a.x * b.y - a.y * b.x;
+		return c;
+	}
+
+	float Vector3::Dot(const Vector3& a, const Vector3& b)
+	{
+		return a.x * b.x + a.y * b.y + a.z * b.z;
+	}
+
     void Matrix4::SetIdentity()
     {
         SetZero();
@@ -289,8 +303,8 @@ namespace HairGL
     Matrix4 Matrix4::operator*(const Matrix4& other) const
     {
         Matrix4 r;
-        for (int i = 0; i < 4; i++) { //rows
-            for (int j = 0; j < 4; j++) { //columns
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
                 float sum = 0.0f;
                 for (int k = 0; k < 4; k++) {
                     sum += m[k][i] * other.m[j][k];
@@ -311,17 +325,117 @@ namespace HairGL
         );
     }
 
-    Vector3 Vector3::Cross(const Vector3& a, const Vector3& b)
-    {
-        Vector3 c;
-        c.x = a.y * b.z - a.z * b.y;
-        c.y = a.z * b.x - a.x * b.z;
-        c.z = a.x * b.y - a.y * b.x;
-        return c;
-    }
+	void Matrix3::SetIdentity()
+	{
+		SetZero();
+		for (int i = 0; i < 3; i++) {
+			m[i][i] = 1.0f;
+		}
+	}
 
-    float Vector3::Dot(const Vector3& a, const Vector3& b)
-    {
-        return a.x * b.x + a.y * b.y + a.z * b.z;
-    }
+	void Matrix3::SetZero()
+	{
+		memset(m, 0, sizeof(float) * 9);
+	}
+
+	Matrix3 Matrix3::operator*(const Matrix3& other) const
+	{
+		Matrix3 r;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				float sum = 0.0f;
+				for (int k = 0; k < 3; k++) {
+					sum += m[k][i] * other.m[j][k];
+				}
+				r.m[j][i] = sum;
+			}
+		}
+		return r;
+	}
+
+	Quaternion::Quaternion(const Vector3& axis, float angle)
+	{
+		float halfAngle = angle * 0.5f;
+		w = cos(halfAngle);
+
+		auto xyz = axis * sin(halfAngle);
+		x = xyz.x;
+		y = xyz.y;
+		z = xyz.z;
+	}
+
+	Quaternion Quaternion::Inversed() const
+	{
+		float lengthSqr = x * x + y * y + z * z + w * w;
+		if (lengthSqr < 0.001) {
+			return Quaternion(0, 0, 0, 1.0f);
+		}
+
+		Quaternion result;
+
+		result.x = -x / lengthSqr;
+		result.y = -y / lengthSqr;
+		result.z = -z / lengthSqr;
+		result.w = w / lengthSqr;
+
+		return result;
+	}
+
+	Quaternion Quaternion::FromMatrix(const Matrix3& matrix)
+	{
+		Quaternion result;
+
+		float trace = matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2];
+
+		if (trace > 0) {
+			result.w = 0.5f * sqrtf(trace + 1.0f);
+			float d = 1.0f / (4.0f * result.w);
+			result.x = (matrix.m[2][1] - matrix.m[1][2]) * d;
+			result.y = (matrix.m[0][2] - matrix.m[2][0]) * d;
+			result.z = (matrix.m[1][0] - matrix.m[0][1]) * d;
+		}
+		else {
+			static size_t nextIndex[3] = {1, 2, 0};
+			size_t i = 0;
+			if (matrix.m[1][1] > matrix.m[i][i]) {
+				i = 1;
+			}
+			if (matrix.m[2][2] > matrix.m[i][i]) {
+				i = 2;
+			}
+
+			size_t j = nextIndex[i];
+			size_t k = nextIndex[j];
+			float root = sqrtf(matrix.m[i][i] - matrix.m[j][j] - matrix.m[k][k] + 1.0f);
+			result[i] = 0.5f * root;
+			root = 0.5f / root;
+			result.w = (matrix.m[k][j] - matrix.m[j][k]) * root;
+			result[j] = (matrix.m[j][i] + matrix.m[i][j]) * root;
+			result[k] = (matrix.m[k][i] + matrix.m[i][k]) * root;
+		}
+		return result;
+	}
+
+	Vector3 Quaternion::operator*(const Vector3& v) const
+	{
+		auto qvec = Vector3(x, y, z);
+		auto uv = Vector3::Cross(qvec, v);
+		auto uuv = Vector3::Cross(qvec, uv);
+		uv *= (2.0f * w);
+		uuv *= 2.0f;
+
+		return v + uv + uuv;
+	}
+
+	Quaternion Quaternion::operator*(const Quaternion& other) const
+	{
+		Quaternion q;
+
+		q.w = w * other.w - x * other.x - y * other.y - z * other.z;
+		q.x = w * other.x + x * other.w + y * other.z - z * other.y;
+		q.y = w * other.y + y * other.w + z * other.x - x * other.z;
+		q.z = w * other.z + z * other.w + x * other.y - y * other.x;
+
+		return q;
+	}
 }

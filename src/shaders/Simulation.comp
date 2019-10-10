@@ -24,19 +24,83 @@ layout(std430, binding = TANGENTS_DISTANCES_BINDING) buffer TangentsDistances
     vec4 data[];
 } tangentsDistances;
 
+layout(std430, binding = REF_VECTORS_BINDING) buffer RefVectors
+{
+    vec4 data[];
+} refVectors;
+
+layout(std430, binding = GLOBAL_ROTATIONS_BINDING) buffer GlobalRotations
+{
+    vec4 data[];
+} globalRotations;
+
+layout(std430, binding = DEBUG_BUFFER_BINDING) buffer DebugBuffer
+{
+    vec4 data[];
+} debugBuffer;
+
 uniform mat4 modelMatrix;
 uniform int verticesPerStrand;
 uniform float timeStep;
 uniform float globalStiffness;
+uniform float localStiffness;
 uniform float damping;
 uniform vec3 gravity;
 uniform int lengthConstraintIterations;
+uniform int localShapeIterations;
 
 shared vec4 sharedPositions[MAX_STRAND_VERTICES];
 
 bool isMovable(vec4 position)
 {
     return position.w > 0;
+}
+
+vec4 makeQuaternion(float angle, vec3 axis)
+{
+    vec4 quaternion = vec4(0.0, 0.0, 0.0, 0.0);
+	float halfAngle = angle * 0.5f;
+	quaternion.w = cos(halfAngle);
+	quaternion.xyz = axis * sin(halfAngle);
+	return quaternion;
+}
+
+vec4 inverseQuaternion(vec4 quaternion)
+{
+    float lengthSqr = quaternion.x * quaternion.x + quaternion.y * quaternion.y + quaternion.z * quaternion.z + quaternion.w * quaternion.w;
+	if(lengthSqr < 0.001) {
+	    return vec4(0, 0, 0, 1.0f);
+	}
+
+	quaternion.x = -quaternion.x / lengthSqr;
+	quaternion.y = -quaternion.y / lengthSqr;
+	quaternion.z = -quaternion.z / lengthSqr;
+	quaternion.w = quaternion.w / lengthSqr;
+
+	return quaternion;
+}
+
+vec3 multQuaternionAndVector(vec4 q, vec3 v)
+{
+    vec3 qvec = q.xyz;
+    vec3 uv = cross(qvec, v);
+    vec3 uuv = cross(qvec, uv);
+    uv *= (2.0f * q.w);
+    uuv *= 2.0f;
+
+    return v + uv + uuv;
+}
+
+vec4 multQuaternionAndQuaternion(vec4 qA, vec4 qB)
+{
+    vec4 q;
+
+    q.w = qA.w * qB.w - qA.x * qB.x - qA.y * qB.y - qA.z * qB.z;
+    q.x = qA.w * qB.x + qA.x * qB.w + qA.y * qB.z - qA.z * qB.y;
+    q.y = qA.w * qB.y + qA.y * qB.w + qA.z * qB.x - qA.x * qB.z;
+    q.z = qA.w * qB.z + qA.z * qB.w + qA.x * qB.y - qA.y * qB.x;
+
+    return q;
 }
 
 vec2 constraintMultiplier(vec4 p0, vec4 p1)
@@ -101,6 +165,48 @@ void main()
 	//Global stiffness
 	vec3 delta = globalStiffness * (initialPosition - sharedPositions[localID]).xyz;
 	sharedPositions[localID].xyz += delta;
+	barrier();
+
+	//Local shape
+	if(localID == 0) {
+	    for(int i = 0; i < localShapeIterations; i++) {
+		    vec4 position = sharedPositions[1];
+			vec4 globalRotation = globalRotations.data[globalRootVertexIndex];
+
+			for(int localVertexIndex = 1; localVertexIndex < verticesPerStrand - 1; localVertexIndex++) {
+			    vec4 positionNext = sharedPositions[localVertexIndex + 1];
+				vec3 localPositionNext = refVectors.data[globalRootVertexIndex + localVertexIndex + 1].xyz;
+				vec3 targetPositionNext = multQuaternionAndVector(globalRotation, localPositionNext) + position.xyz;
+
+				vec3 localDelta = localStiffness * (targetPositionNext - positionNext.xyz);
+
+				if(isMovable(position)) {
+				    position.xyz -= localDelta;
+				}
+
+				if(isMovable(positionNext)) {
+				    positionNext.xyz += localDelta;
+				}
+
+				vec4 globalRotationInv = inverseQuaternion(globalRotation);
+				vec3 tangent = normalize(positionNext.xyz - position.xyz);
+				vec3 localTangent = normalize(multQuaternionAndVector(globalRotationInv, tangent));
+				vec3 xAxis = vec3(1.0, 0, 0);
+				vec3 rotationAxis = cross(xAxis, localTangent);
+				float angle = acos(dot(xAxis, localTangent));
+
+				if(length(rotationAxis) > 0.001 && abs(angle) > 0.001) {
+					rotationAxis = normalize(rotationAxis);
+					vec4 localRotation = makeQuaternion(angle, rotationAxis);
+					globalRotation = multQuaternionAndQuaternion(globalRotation, localRotation);
+				}
+
+				sharedPositions[localVertexIndex].xyz = position.xyz;
+				sharedPositions[localVertexIndex + 1].xyz = positionNext.xyz;
+				position = positionNext;
+			}
+	    } 
+	}
 	barrier();
 
 	//Length constraints

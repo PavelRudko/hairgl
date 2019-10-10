@@ -83,6 +83,7 @@ void Application::Update(float timeStep)
     ImGui::SliderFloat("Specular Power", &hairSettings.specularPower, 20.0f, 100.0f);
     ImGui::ColorEdit3("Color", hairSettings.color.m);
     ImGui::SliderFloat("Global Stiffness", &hairSettings.globalStiffness, 0.0f, 1.0f);
+	ImGui::SliderFloat("Local Stiffness", &hairSettings.localStiffness, 0.0f, 1.0f);
     ImGui::SliderFloat("Damping", &hairSettings.damping, 0.0f, 0.5f);
     ImGui::End();
     ImGui::Render();

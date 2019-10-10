@@ -39,12 +39,12 @@ namespace HairGL
         {
         }
 
-        float operator[](unsigned int i) const 
+        float operator[](size_t i) const
         {
             return m[i];
         }
 
-        float& operator[](unsigned int i)
+        float& operator[](size_t i)
         {
             return m[i];
         }
@@ -94,12 +94,12 @@ namespace HairGL
         {
         }
 
-        float operator[](unsigned int i) const
+        float operator[](size_t i) const
         {
             return m[i];
         }
 
-        float& operator[](unsigned int i)
+        float& operator[](size_t i)
         {
             return m[i];
         }
@@ -147,6 +147,62 @@ namespace HairGL
         Matrix4 operator*(const Matrix4& other) const;
         Vector4 operator*(const Vector4& v) const;
     };
+
+	struct Matrix3
+	{
+		Vector3 m[3];
+
+		Matrix3()
+		{
+			SetZero();
+		}
+
+		void SetIdentity();
+		void SetZero();
+
+		Matrix3 operator*(const Matrix3& other) const;
+	};
+
+	struct Quaternion
+	{
+		union
+		{
+			struct
+			{
+				float m[4];
+			};
+			struct
+			{
+				float x, y, z, w;
+			};
+		};
+
+		Quaternion(float x = 0.0f, float y = 0.0f, float z = 0.0f, float w = 1.0f) :
+			x(x),
+			y(y),
+			z(z),
+			w(w)
+		{
+		}
+
+		Quaternion(const Vector3& axis, float angle);
+
+		float operator[](unsigned int i) const
+		{
+			return m[i];
+		}
+
+		float& operator[](unsigned int i)
+		{
+			return m[i];
+		}
+
+		Quaternion Inversed() const;
+		static Quaternion FromMatrix(const Matrix3& matrix);
+
+		Vector3 operator*(const Vector3& v) const;
+		Quaternion operator*(const Quaternion& other) const;
+	};
 }
 
 #endif

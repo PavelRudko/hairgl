@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "gl/GLUtils.h"
 #include <vector>
+#include <algorithm>
 #include <hairgl/Math.h>
 #include "shaders/ShaderTypes.h"
 
@@ -50,15 +51,20 @@ namespace HairGL
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, POSITIONS_BUFFER_BINDING, instance->positionsBufferID);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PREVIOUS_POSITIONS_BUFFER_BINDING, instance->previousPositionsBufferID);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TANGENTS_DISTANCES_BINDING, asset->tangentsDistancesBufferID);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, REF_VECTORS_BINDING, asset->refVectorsBufferID);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, GLOBAL_ROTATIONS_BINDING, asset->globalRotationsBufferID);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, DEBUG_BUFFER_BINDING, asset->debugBufferID);
 
         int verticesPerStrand = asset->segmentsCount + 1;
         glUniformMatrix4fv(glGetUniformLocation(simulationProgramID, "modelMatrix"), 1, false, (float*)instance->settings.modelMatrix.m);
         glUniform1i(glGetUniformLocation(simulationProgramID, "verticesPerStrand"), verticesPerStrand);
         glUniform1f(glGetUniformLocation(simulationProgramID, "timeStep"), timeStep);
         glUniform1f(glGetUniformLocation(simulationProgramID, "globalStiffness"), instance->settings.globalStiffness);
+		glUniform1f(glGetUniformLocation(simulationProgramID, "localStiffness"), (std::min)(instance->settings.localStiffness, 0.95f) * 0.5f);
         glUniform1f(glGetUniformLocation(simulationProgramID, "damping"), instance->settings.damping);
         glUniform3f(glGetUniformLocation(simulationProgramID, "gravity"), 0.0f, -9.8f, 0.0f);
         glUniform1i(glGetUniformLocation(simulationProgramID, "lengthConstraintIterations"), 5);
+		glUniform1i(glGetUniformLocation(simulationProgramID, "localShapeIterations"), 10);
 
         glDispatchCompute(instance->asset->guidesCount, 1, 1);
         glUseProgram(0);

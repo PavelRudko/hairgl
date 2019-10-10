@@ -13,6 +13,9 @@ namespace HairGL
         uint32_t restPositionsBufferID;
         uint32_t tangentsDistancesBufferID;
         uint32_t hairIndicesBufferID;
+		uint32_t refVectorsBufferID;
+		uint32_t globalRotationsBufferID;
+		uint32_t debugBufferID;
         uint32_t segmentsCount;
         uint32_t guidesCount;
         uint32_t trianglesCount;
