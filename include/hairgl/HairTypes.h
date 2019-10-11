@@ -39,6 +39,7 @@ namespace HairGL
         float globalStiffness;
 		float localStiffness;
         float damping;
+		Vector3 wind;
 
         HairInstanceSettings() :
             visualizeGuides(false),
@@ -55,8 +56,9 @@ namespace HairGL
             specularPower(50.0f),
             color(0, 0, 0, 1),
             globalStiffness(0),
-			localStiffness(1),
-            damping(0)
+			localStiffness(0),
+            damping(0),
+			wind(0, 0, 0)
         {
             modelMatrix.SetIdentity();
         }

@@ -16,7 +16,7 @@ namespace HairGL
     public:
         HairSystem();
         HairSystem(const HairSystem&) = delete;
-        void Simulate(const HairInstance* instance, float timeStep = 1.0f / 60.0f) const;
+        void Simulate(HairInstance* instance, float timeStep = 1.0f / 60.0f) const;
         void Render(const HairInstance* instance, const Matrix4& viewMatrix, const Matrix4& projectionMatrix) const;
         HairAsset* LoadAsset(const char* path) const;
         void DestroyAsset(HairAsset* asset) const;

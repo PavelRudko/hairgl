@@ -16,7 +16,7 @@ namespace HairGL
         renderer = new Renderer();
     }
 
-    void HairSystem::Simulate(const HairInstance* instance, float timeStep) const
+    void HairSystem::Simulate(HairInstance* instance, float timeStep) const
     {
         renderer->Simulate(instance, timeStep);
     }

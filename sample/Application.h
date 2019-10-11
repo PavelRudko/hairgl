@@ -19,6 +19,7 @@ private:
     HairGL::HairInstance* hairInstance;
     HairGL::HairInstanceSettings hairSettings;
     CameraController* cameraController;
+	float windMagnitude;
 
     void Render();
     void Update(float timeStep);

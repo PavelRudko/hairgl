@@ -28,6 +28,7 @@ namespace HairGL
         HairInstanceSettings settings;
         uint32_t positionsBufferID;
         uint32_t previousPositionsBufferID;
+		uint32_t simulationFrame;
     };
 
     std::string LoadFile(const char* path);

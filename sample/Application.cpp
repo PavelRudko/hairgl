@@ -6,10 +6,11 @@
 #include <imgui_impl_opengl3.h>
 
 Application::Application(const char* windowTitle, int initialScreenWidth, int initialScreenHeight) :
-    hairSystem(nullptr),
-    hairAsset(nullptr),
-    hairInstance(nullptr),
-    cameraController(nullptr)
+	hairSystem(nullptr),
+	hairAsset(nullptr),
+	hairInstance(nullptr),
+	cameraController(nullptr),
+	windMagnitude(0.0f)
 {
     if (glfwInit() == GLFW_FALSE) {
         throw std::runtime_error("Cannot initialize GLFW.");
@@ -64,7 +65,7 @@ void Application::Update(float timeStep)
 
     ImVec2 settingsWindowSize;
     settingsWindowSize.x = 400;
-    settingsWindowSize.y = 400;
+    settingsWindowSize.y = 420;
 
     ImGui::SetNextWindowPos(settingsWindowPosition);
     ImGui::SetNextWindowSizeConstraints(settingsWindowSize, settingsWindowSize);
@@ -85,8 +86,11 @@ void Application::Update(float timeStep)
     ImGui::SliderFloat("Global Stiffness", &hairSettings.globalStiffness, 0.0f, 1.0f);
 	ImGui::SliderFloat("Local Stiffness", &hairSettings.localStiffness, 0.0f, 1.0f);
     ImGui::SliderFloat("Damping", &hairSettings.damping, 0.0f, 0.5f);
+	ImGui::SliderFloat("Wind Magnitude", &windMagnitude, 0.0f, 100.0f);
     ImGui::End();
     ImGui::Render();
+
+	hairSettings.wind = HairGL::Vector3(1.0f, 0.3f, 1.0f).Normalized() * windMagnitude;
 
     hairSystem->UpdateInstanceSettings(hairInstance, hairSettings);
     hairSystem->Simulate(hairInstance, timeStep);

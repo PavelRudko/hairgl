@@ -41,7 +41,7 @@ namespace HairGL
         hairRenderingProgramID = CreateHairRenderingProgram();
     }
 
-    void Renderer::Simulate(const HairInstance* instance, float timeStep) const
+    void Renderer::Simulate(HairInstance* instance, float timeStep) const
     {
         auto asset = instance->asset;
 
@@ -56,6 +56,7 @@ namespace HairGL
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, DEBUG_BUFFER_BINDING, asset->debugBufferID);
 
         int verticesPerStrand = asset->segmentsCount + 1;
+		auto windPyramid = CreateWindPyramid(instance->settings.wind, instance->simulationFrame);
         glUniformMatrix4fv(glGetUniformLocation(simulationProgramID, "modelMatrix"), 1, false, (float*)instance->settings.modelMatrix.m);
         glUniform1i(glGetUniformLocation(simulationProgramID, "verticesPerStrand"), verticesPerStrand);
         glUniform1f(glGetUniformLocation(simulationProgramID, "timeStep"), timeStep);
@@ -65,11 +66,14 @@ namespace HairGL
         glUniform3f(glGetUniformLocation(simulationProgramID, "gravity"), 0.0f, -9.8f, 0.0f);
         glUniform1i(glGetUniformLocation(simulationProgramID, "lengthConstraintIterations"), 5);
 		glUniform1i(glGetUniformLocation(simulationProgramID, "localShapeIterations"), 10);
+		glUniformMatrix4fv(glGetUniformLocation(simulationProgramID, "windPyramid"), 1, false, (float*)windPyramid.m);
 
         glDispatchCompute(instance->asset->guidesCount, 1, 1);
         glUseProgram(0);
 
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+		instance->simulationFrame++;
     }
 
     void Renderer::Render(const HairInstance* instance, const Matrix4& viewMatrix, const Matrix4& projectionMatrix) const
@@ -212,6 +216,41 @@ namespace HairGL
 
         return programID;
     }
+
+	Vector4 GetPyramidWindCorner(const Quaternion& rotationFromXToWind, const Vector3& axis, float angle, float magnitude)
+	{
+		Vector3 xAxis(1.0f, 0.0f, 0.0f);
+		Quaternion rotation(axis, angle);
+		auto side = rotationFromXToWind * rotation * xAxis * magnitude;
+		return Vector4(side.x, side.y, side.z, 0.0f);
+	}
+
+	Matrix4 Renderer::CreateWindPyramid(const Vector3& wind, int frame) const
+	{
+		float magnitude = wind.Length();
+		auto dir = wind / magnitude;
+		magnitude *= (pow(sinf(frame * 0.01f), 2.0f) + 0.5f);
+
+		Vector3 xAxis(1.0f, 0.0f, 0.0f);
+		auto rotationAxis = Vector3::Cross(xAxis, dir);
+		float angle = asin(rotationAxis.Length());
+
+		Quaternion rotationFromXToWind;
+		if (angle > 0.001)
+		{
+			rotationFromXToWind = Quaternion(rotationAxis.Normalized(), angle);
+		}
+
+		float coneAngle = 40.0f * DegToRad;
+
+		Matrix4 pyramid;
+		pyramid.m[0] = GetPyramidWindCorner(rotationFromXToWind, Vector3(0, 1, 0), coneAngle, magnitude);
+		pyramid.m[1] = GetPyramidWindCorner(rotationFromXToWind, Vector3(0, -1, 0), coneAngle, magnitude);
+		pyramid.m[2] = GetPyramidWindCorner(rotationFromXToWind, Vector3(0, 0, 1), coneAngle, magnitude);
+		pyramid.m[3] = GetPyramidWindCorner(rotationFromXToWind, Vector3(0, 0, -1), coneAngle, magnitude);
+
+		return pyramid;
+	}
 
     Renderer::~Renderer()
     {

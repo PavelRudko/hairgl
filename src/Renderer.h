@@ -12,7 +12,7 @@ namespace HairGL
     public:
         Renderer();
         Renderer(const Renderer&) = delete;
-        void Simulate(const HairInstance* instance, float timeStep) const;
+        void Simulate(HairInstance* instance, float timeStep) const;
         void Render(const HairInstance* instance, const Matrix4& viewMatrix, const Matrix4& projectionMatrix) const;
         ~Renderer();
 
@@ -32,6 +32,7 @@ namespace HairGL
         uint32_t CreateGrowthMeshVisualizationProgram();
         uint32_t CreateSimulationProgram();
         uint32_t CreateHairRenderingProgram();
+		Matrix4 CreateWindPyramid(const Vector3& wind, int frame) const;
 
         std::string shaderIncludeSrc;
     };

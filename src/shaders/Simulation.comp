@@ -48,6 +48,7 @@ uniform float damping;
 uniform vec3 gravity;
 uniform int lengthConstraintIterations;
 uniform int localShapeIterations;
+uniform mat4 windPyramid;
 
 shared vec4 sharedPositions[MAX_STRAND_VERTICES];
 
@@ -206,6 +207,19 @@ void main()
 				position = positionNext;
 			}
 	    } 
+	}
+	barrier();
+
+	vec3 wind0 = windPyramid[0].xyz;
+	if(wind0.x != 0 && wind0.y != 0 && wind0.z != 0) {
+	    if(localID >= 2 && localID < verticesPerStrand - 1) {
+		    float a = (globalID % 20) / 20.0f;
+			vec3 w = a * wind0 + (1.0 - a) * windPyramid[1].xyz + a * windPyramid[2].xyz + (1.0 - a) * windPyramid[3].xyz;
+			vec3 tangent = normalize(sharedPositions[localID].xyz - sharedPositions[localID + 1].xyz);
+			vec3 windForce = -cross(cross(tangent, w), tangent);
+			sharedPositions[localID].xyz += windForce * timeStep * timeStep;
+			debugBuffer.data[globalVertexIndex].xyz = windForce;
+		}
 	}
 	barrier();
 
