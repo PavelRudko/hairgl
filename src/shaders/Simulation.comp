@@ -142,6 +142,18 @@ void applyDistanceConstraint(int index0, int index1, float targetDistance)
 	sharedPositions[index1].xyz -= multiplier[1] * delta;
 }
 
+vec3 calculateWindForce(int localID, int globalID) {
+    vec3 wind0 = windPyramid[0].xyz;
+	if(length(wind0) == 0 || localID < 2 || localID >= verticesPerStrand - 1) {
+	    return vec3(0.0, 0.0, 0.0);
+	}
+	float a = (globalID % 20) / 20.0f;
+	vec3 w = a * wind0 + (1.0 - a) * windPyramid[1].xyz + a * windPyramid[2].xyz + (1.0 - a) * windPyramid[3].xyz;
+	vec3 tangent = normalize(sharedPositions[localID].xyz - sharedPositions[localID + 1].xyz);
+	vec3 windForce = cross(cross(tangent, w), tangent);
+	return windForce;
+}
+
 void main()
 {
     int globalID = int(gl_GlobalInvocationID.x);
@@ -158,10 +170,16 @@ void main()
 	vec4 previousPosition = previousPositions.data[globalVertexIndex];
 	vec4 initialPosition = restPositions.data[globalVertexIndex];
 	vec4 tangentDistance = tangentsDistances.data[globalVertexIndex];
-	vec3 force = gravity;
+	
+	//Fill shared positions
+	sharedPositions[localID] = currentPosition;
+	barrier();
 
 	//Apply forces using Verlet integration
-	sharedPositions[localID] = isMovable(currentPosition) ? integrate(currentPosition, previousPosition, force, damping) : initialPosition;
+	if(isMovable(currentPosition)) {
+	    vec3 force = gravity + calculateWindForce(localID, globalID);
+	    sharedPositions[localID] = integrate(currentPosition, previousPosition, force, damping);
+	}
 
 	//Global stiffness
 	vec3 delta = globalStiffness * (initialPosition - sharedPositions[localID]).xyz;
@@ -207,19 +225,6 @@ void main()
 				position = positionNext;
 			}
 	    } 
-	}
-	barrier();
-
-	vec3 wind0 = windPyramid[0].xyz;
-	if(wind0.x != 0 && wind0.y != 0 && wind0.z != 0) {
-	    if(localID >= 2 && localID < verticesPerStrand - 1) {
-		    float a = (globalID % 20) / 20.0f;
-			vec3 w = a * wind0 + (1.0 - a) * windPyramid[1].xyz + a * windPyramid[2].xyz + (1.0 - a) * windPyramid[3].xyz;
-			vec3 tangent = normalize(sharedPositions[localID].xyz - sharedPositions[localID + 1].xyz);
-			vec3 windForce = -cross(cross(tangent, w), tangent);
-			sharedPositions[localID].xyz += windForce * timeStep * timeStep;
-			debugBuffer.data[globalVertexIndex].xyz = windForce;
-		}
 	}
 	barrier();
 

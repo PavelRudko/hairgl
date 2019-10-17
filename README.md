@@ -9,6 +9,8 @@ I used multiple articles and resources as references, but the most useful was th
 
 ![](media/demo.gif)
 
+![](media/wind.gif)
+
 ### How to export hairstyle from blender 
 Use the script from 'util' folder. It works with blender 2.8. You should create an object, add a hair particle system, comb the hair and then just put the name of the object and the desired export path to the top of the script. 
 

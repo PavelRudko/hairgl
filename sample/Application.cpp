@@ -65,7 +65,7 @@ void Application::Update(float timeStep)
 
     ImVec2 settingsWindowSize;
     settingsWindowSize.x = 400;
-    settingsWindowSize.y = 420;
+    settingsWindowSize.y = 430;
 
     ImGui::SetNextWindowPos(settingsWindowPosition);
     ImGui::SetNextWindowSizeConstraints(settingsWindowSize, settingsWindowSize);
@@ -90,7 +90,7 @@ void Application::Update(float timeStep)
     ImGui::End();
     ImGui::Render();
 
-	hairSettings.wind = HairGL::Vector3(1.0f, 0.3f, 1.0f).Normalized() * windMagnitude;
+	hairSettings.wind = HairGL::Vector3(1.0f, 0.0f, 0.0f).Normalized() * windMagnitude;
 
     hairSystem->UpdateInstanceSettings(hairInstance, hairSettings);
     hairSystem->Simulate(hairInstance, timeStep);

@@ -229,7 +229,7 @@ namespace HairGL
 	{
 		float magnitude = wind.Length();
 		auto dir = wind / magnitude;
-		magnitude *= (pow(sinf(frame * 0.01f), 2.0f) + 0.5f);
+		//magnitude *= (pow(sinf(frame * 0.00001f), 2.0f) + 0.5f);
 
 		Vector3 xAxis(1.0f, 0.0f, 0.0f);
 		auto rotationAxis = Vector3::Cross(xAxis, dir);
@@ -241,7 +241,7 @@ namespace HairGL
 			rotationFromXToWind = Quaternion(rotationAxis.Normalized(), angle);
 		}
 
-		float coneAngle = 40.0f * DegToRad;
+		float coneAngle = 20.0f * DegToRad;
 
 		Matrix4 pyramid;
 		pyramid.m[0] = GetPyramidWindCorner(rotationFromXToWind, Vector3(0, 1, 0), coneAngle, magnitude);
